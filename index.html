@@ -38,6 +38,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px;mar
   <label>كود الدخول</label><input id="code" type="password" onkeydown="if(event.key=='Enter')login()">
   <p id="er" style="color:#c0392b;text-align:center;min-height:22px"></p>
   <button class="btn" onclick="login()">دخول</button>
+  <p style="text-align:center;color:#9ab;font-size:11px;margin:10px 0 0">إصدار الماسح: s21-3</p>
 </div>
 
 <div id="ap" class="hide">
@@ -103,7 +104,7 @@ async function boot() {
   $('u').value = API;
   let why2 = '';
   if (API && RT) { try { const r = await api({ a: 'who', rt: RT }); if (!r.err) return show(r); why2 = r.err } catch (e) { why2 = 'تعذّر الاتصال بالنظام' } }
-  else if (!API) why2 = 'لم يصل رابط النظام'; else why2 = 'لم تصل جلسة الدخول من النظام';
+  else if (!API) why2 = 'لم يصل رابط النظام'; else why2 = 'لم تصل جلسة الدخول من النظام (' + (window.HINFO || '') + ')';
   $('lg').classList.remove('hide'); if (why2) $('er').textContent = 'الدخول التلقائي لم يعمل: ' + why2;
 }
 let SL = [], DONE = {};
@@ -165,8 +166,8 @@ function ask(r) {
 }
 /* بيانات الدخول القادمة من النظام عبر الرابط (#u=...&rt=...) */
 (function () {
-  const hs = location.hash.slice(1); if (!hs) return;
-  const p = new URLSearchParams(hs), u = p.get('u'), rt = p.get('rt');
+  const hs = location.hash.slice(1); window.HINFO = hs ? 'وصل رابط بيانات' : 'فُتحت الصفحة دون بيانات من النظام'; if (!hs) return;
+  const p = new URLSearchParams(hs), u = p.get('u'), rt = p.get('rt'); window.HINFO = 'وصل رابط: النظام ' + (u ? 'نعم' : 'لا') + '، الجلسة ' + (rt ? 'طولها ' + rt.length : 'لا');
   if (u && /^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)) { API = u; LS.s('api', u) }
   if (rt && /^[a-f0-9]{40}$/.test(rt)) { RT = rt; LS.s('rt', rt) }
   try { history.replaceState(null, '', location.pathname + location.search) } catch (e) { }

@@ -38,7 +38,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px;mar
   <label>كود الدخول</label><input id="code" type="password" onkeydown="if(event.key=='Enter')login()">
   <p id="er" style="color:#c0392b;text-align:center;min-height:22px"></p>
   <button class="btn" onclick="login()">دخول</button>
-  <p style="text-align:center;color:#9ab;font-size:11px;margin:10px 0 0">إصدار الماسح: s21-4</p>
+  <p style="text-align:center;color:#9ab;font-size:11px;margin:10px 0 0">إصدار الماسح: s21-5</p>
 </div>
 
 <div id="ap" class="hide">
@@ -105,7 +105,7 @@ async function boot() {
   let why2 = '';
   if (API && RT) { try { const r = await api({ a: 'who', rt: RT }); if (!r.err) return show(r); why2 = r.err } catch (e) { why2 = 'تعذّر الاتصال بالنظام' } }
   else if (!API) why2 = 'لم يصل رابط النظام'; else why2 = 'لم تصل جلسة الدخول من النظام (' + (window.HINFO || '') + ')';
-  $('lg').classList.remove('hide'); if (why2) $('er').textContent = 'الدخول التلقائي لم يعمل [s21-4]: ' + why2;
+  $('lg').classList.remove('hide'); if (why2) $('er').textContent = 'الدخول التلقائي لم يعمل [s21-5]: ' + why2;
 }
 let SL = [], DONE = {};
 const nrm = s => String(s).replace(/[\u064B-\u0652ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
@@ -127,7 +127,8 @@ function startCool() {
   $('res').appendChild(w); setTimeout(() => { const b = $('cbi'); if (b) b.style.width = '0%' }, 40);
   CT = setInterval(() => { n--; if (n > 0) { const e = $('cdn'); if (e) e.textContent = n; return } clearInterval(CT); cooling = false; const x = $('cdw'); if (x) x.innerHTML = '<div class="rdy">✅ جاهز للطالب التالي</div>'; beep(660) }, 1000);
 }
-function show(r) { $('lg').classList.add('hide'); $('ap').classList.remove('hide'); $('sch').textContent = '🎓 ' + (r.school || ''); $('usr').textContent = r.name || ''; $('cds').value = String(CD); $('snd').value = SND; startCam(); loadSt() }
+function show(r) {
+  setTimeout(() => { if (LS.g('rt') !== RT) { $('res').className = 'res warn'; $('res').innerHTML = '⚠️ هذا المتصفح لا يحفظ الجلسة (وضع تصفح خاص أو حجب لتخزين الموقع)، فستُطلب منك كتابة الكود في كل مرة. جرّب متصفحاً عادياً أو أضف الصفحة للشاشة الرئيسية ثم ادخل منها.' } }, 1500); $('lg').classList.add('hide'); $('ap').classList.remove('hide'); $('sch').textContent = '🎓 ' + (r.school || ''); $('usr').textContent = r.name || ''; $('cds').value = String(CD); $('snd').value = SND; startCam(); loadSt() }
 function logout() { stopCam(); LS.d('rt'); RT = ''; $('ap').classList.add('hide'); $('lg').classList.remove('hide') }
 
 async function startCam() {

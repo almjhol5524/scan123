@@ -27,6 +27,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px;mar
 .sr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px;border-radius:14px;background:#f6fbfa;margin:6px 0;cursor:pointer;border:1px solid #e0eeea}.sr:active{background:#e3f4ef}.tg{display:inline-block;padding:2px 9px;border-radius:20px;color:#fff;font-size:12px;margin-right:4px}
 .ov{position:fixed;inset:0;background:rgba(35,64,59,.5);display:grid;place-items:center;z-index:9;padding:16px}
 .md{background:#fff;border-radius:24px;padding:22px;width:min(420px,100%);text-align:center}
+.cdw{margin-top:10px}.cdn{font-size:76px;font-weight:700;line-height:1.1}.cbar{height:10px;background:rgba(0,0,0,.1);border-radius:8px;overflow:hidden;margin-top:8px}.cbar i{display:block;height:100%;width:100%;background:currentColor;opacity:.55}.rdy{margin-top:10px;font-size:18px;color:#1f6d5f}
 @keyframes pop{from{transform:scale(.9);opacity:0}}
 </style></head><body><div class="wrap">
 
@@ -41,7 +42,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px;mar
 <div id="ap" class="hide">
   <header><b id="sch"></b><span><span id="usr" style="color:var(--mut);font-size:13px"></span> <button class="btn g" style="width:auto;padding:6px 14px;margin:0;font-size:13px" onclick="logout()">خروج</button></span></header>
   <div id="rd"></div>
-  <div style="display:flex;gap:8px"><button class="btn g" id="cb" onclick="toggleCam()">⏸ إيقاف الكاميرا</button></div>
+  <div style="display:flex;gap:8px"><button class="btn g" id="cb" onclick="toggleCam()">⏸ إيقاف الكاميرا</button><select id="cds" onchange="setCd(this.value)" style="width:auto;margin-top:12px"><option value="0">بدون عداد</option><option value="2">عداد 2 ث</option><option value="3">عداد 3 ث</option><option value="4">عداد 4 ث</option><option value="5">عداد 5 ث</option></select></div>
   <div id="res" class="res idle">وجّه الكاميرا نحو بطاقة الطالب</div>
   <div class="card"><label style="margin-top:0">🔍 ابحث باسم الطالب أو رقمه</label><input id="mi" autocomplete="off" placeholder="اكتب جزءاً من الاسم" oninput="srch()" onkeydown="if(event.key=='Enter')manual()"><div id="sr"></div></div>
   <div class="card"><b>آخر المسح (<span id="n">0</span>)</b><div id="ls"></div></div>
@@ -94,7 +95,15 @@ function srch() {
 }
 function pick(id) { if (busy) return; $('mi').value = ''; $('sr').innerHTML = ''; SEEN = {}; busy = true; mark(id).finally(() => busy = false) }
 function manual() { const v = $('mi').value.trim(), ex = SL.find(s => s.id == v); if (ex) return pick(ex.id); const q = nrm(v), L = SL.filter(s => nrm(s.name).includes(q)); if (L.length == 1) pick(L[0].id) }
-function show(r) { $('lg').classList.add('hide'); $('ap').classList.remove('hide'); $('sch').textContent = '🎓 ' + (r.school || ''); $('usr').textContent = r.name || ''; startCam(); loadSt() }
+let CD = LS.g('cd') === null ? 3 : +LS.g('cd'), cooling = false, CT = null;
+function setCd(v) { CD = +v; LS.s('cd', CD) }
+function startCool() {
+  if (!CD) return; clearInterval(CT); cooling = true; let n = CD;
+  const w = document.createElement('div'); w.className = 'cdw'; w.id = 'cdw'; w.innerHTML = `<div class="cdn" id="cdn">${n}</div><div>ثوانٍ حتى الطالب التالي</div><div class="cbar"><i id="cbi" style="transition:width ${CD}s linear"></i></div>`;
+  $('res').appendChild(w); setTimeout(() => { const b = $('cbi'); if (b) b.style.width = '0%' }, 40);
+  CT = setInterval(() => { n--; if (n > 0) { const e = $('cdn'); if (e) e.textContent = n; return } clearInterval(CT); cooling = false; const x = $('cdw'); if (x) x.innerHTML = '<div class="rdy">✅ جاهز للطالب التالي</div>'; beep(660) }, 1000);
+}
+function show(r) { $('lg').classList.add('hide'); $('ap').classList.remove('hide'); $('sch').textContent = '🎓 ' + (r.school || ''); $('usr').textContent = r.name || ''; $('cds').value = String(CD); startCam(); loadSt() }
 function logout() { stopCam(); LS.d('rt'); RT = ''; $('ap').classList.add('hide'); $('lg').classList.remove('hide') }
 
 async function startCam() {
@@ -110,14 +119,14 @@ function toggleCam() { CAM ? stopCam() : startCam() }
 
 function banner(k, t) { $('res').className = 'res ' + k; $('res').innerHTML = t; beep(k == 'ok' ? 880 : 330); if (navigator.vibrate) navigator.vibrate(k == 'ok' ? 60 : [80, 60, 80]) }
 async function onScan(text) {
-  text = String(text).trim(); if (busy || !text) return;
-  if (SEEN[text] && Date.now() - SEEN[text] < 4000) return; SEEN[text] = Date.now();
-  busy = true; try { await mark(text) } finally { busy = false }
+  text = String(text).trim(); if (busy || cooling || !text) return;
+  if (SEEN[text] && Date.now() - SEEN[text] < 6000) return; SEEN[text] = Date.now();
+  busy = true; try { if ((await mark(text)) !== 'absent') startCool() } finally { busy = false }
 }
 async function mark(id, force) {
   let r; try { r = await api({ a: 'scan', rt: RT, id: id, force: !!force, date: today(), hijri: hijri(new Date()) }) } catch (e) { return banner('err', esc(why(e))) }
   if (r.err) { if (/انتهت الجلسة/.test(r.err)) { banner('err', 'انتهت الجلسة، سجّل الدخول من جديد'); return logout() } return banner('err', esc(r.err)) }
-  if (r.absent) return ask(r);
+  if (r.absent) { ask(r); return 'absent' }
   if (r.dup) { DONE[r.id] = r.time; return banner('warn', `${esc(r.name)}<br>سُجِّل متأخراً مسبقاً اليوم الساعة ${esc(r.time)}`) }
   N++; $('n').textContent = N; DONE[r.id] = r.time; const st = SL.find(z => z.id == r.id); if (st) { st.lc = r.late; st.ab = 0 }
   banner(r.late >= 3 ? 'alert' : 'ok', `✔ ${esc(r.name)}<br>${esc(r.cls)} • ${esc(r.time)}<br>تأخره رقم ${r.late}${r.late >= 3 ? ' ⚠️' : ''}`);
@@ -129,7 +138,7 @@ function ask(r) {
   o.innerHTML = `<div class="md"><div style="font-size:40px">❓</div><h3>${esc(r.name)}</h3><p>مسجّل <b>غائباً</b> اليوم. هل حضر متأخراً؟</p><button class="btn" id="y">نعم، حوّله إلى متأخر</button><button class="btn g" id="x">إلغاء</button></div>`;
   document.body.appendChild(o); busy = true;
   o.querySelector('#x').onclick = () => { o.remove(); busy = false };
-  o.querySelector('#y').onclick = async () => { o.remove(); try { await mark(r.id, true) } finally { busy = false } };
+  o.querySelector('#y').onclick = async () => { o.remove(); try { await mark(r.id, true); startCool() } finally { busy = false } };
 }
 boot();
 </script></body></html>

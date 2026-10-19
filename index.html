@@ -100,8 +100,10 @@ async function login() {
 }
 async function boot() {
   $('u').value = API;
-  if (API && RT) { try { const r = await api({ a: 'who', rt: RT }); if (!r.err) return show(r) } catch (e) { } }
-  $('lg').classList.remove('hide');
+  let why2 = '';
+  if (API && RT) { try { const r = await api({ a: 'who', rt: RT }); if (!r.err) return show(r); why2 = r.err } catch (e) { why2 = 'تعذّر الاتصال بالنظام' } }
+  else if (!API) why2 = 'لم يصل رابط النظام'; else why2 = 'لم تصل جلسة الدخول من النظام';
+  $('lg').classList.remove('hide'); if (why2) $('er').textContent = 'الدخول التلقائي لم يعمل: ' + why2;
 }
 let SL = [], DONE = {};
 const nrm = s => String(s).replace(/[\u064B-\u0652ـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();

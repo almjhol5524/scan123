@@ -58,17 +58,24 @@ const hijri = d => { const p = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalq
 const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10) };
 const beep = f => { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(); o.frequency.value = f; o.connect(a.destination); o.start(); setTimeout(() => { o.stop(); a.close() }, 140) } catch (e) { } };
 
-async function api(o) {
-  const body = JSON.stringify(o);
-  try { const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body }); return await r.json() }
-  catch (e) { const r = await fetch(API + (API.includes('?') ? '&' : '?') + 'api=1&p=' + encodeURIComponent(body)); return await r.json() }
+/* اتصال JSONP: لا يتأثر بقيود CORS */
+function api(o) {
+  return new Promise((ok, no) => {
+    const cb = 'cb' + Math.random().toString(36).slice(2), el = document.createElement('script');
+    const done = () => { clearTimeout(t); delete window[cb]; el.remove() };
+    const t = setTimeout(() => { done(); no(new Error('NET')) }, 20000);
+    window[cb] = d => { done(); ok(d) }; el.onerror = () => { done(); no(new Error('NET')) };
+    el.src = API + (API.includes('?') ? '&' : '?') + 'api=1&cb=' + cb + '&p=' + encodeURIComponent(JSON.stringify(o));
+    document.head.appendChild(el);
+  });
 }
+const why = e => 'تعذّر الاتصال بالنظام. تأكد أن الرابط كامل وينتهي بـ /exec، وأنك نشرت الإصدار الجديد من Apps Script (نشر ← إدارة عمليات النشر ← إصدار جديد)، وأن «من لديه حق الوصول» = «أي شخص».';
 function loadLib(urls) { return new Promise((ok, no) => { const t = i => { if (i >= urls.length) return no(new Error('تعذر تحميل مكتبة المسح، تحقق من الاتصال')); const s = document.createElement('script'); s.src = urls[i]; s.onload = ok; s.onerror = () => t(i + 1); document.head.appendChild(s) }; t(0) }) }
 
 async function login() {
   $('er').textContent = ''; API = $('u').value.trim(); if (!/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(API)) return $('er').textContent = 'رابط النظام غير صحيح (يجب أن ينتهي بـ /exec)';
   try { const r = await api({ a: 'login', code: $('code').value }); if (r.err) return $('er').textContent = r.err;
-    RT = r.rt; LS.s('api', API); LS.s('rt', RT); show(r) } catch (e) { $('er').textContent = 'تعذّر الاتصال بالنظام، تحقق من الرابط والاتصال' }
+    RT = r.rt; LS.s('api', API); LS.s('rt', RT); show(r) } catch (e) { $('er').textContent = why(e) }
 }
 async function boot() {
   $('u').value = API;
@@ -97,7 +104,7 @@ async function onScan(text) {
 }
 function manual() { const v = $('mi').value.trim(); if (!v || busy) return; $('mi').value = ''; SEEN = {}; busy = true; mark(v).finally(() => busy = false) }
 async function mark(id, force) {
-  let r; try { r = await api({ a: 'scan', rt: RT, id: id, force: !!force, date: today(), hijri: hijri(new Date()) }) } catch (e) { return banner('err', 'تعذّر الاتصال بالنظام، أعد المحاولة') }
+  let r; try { r = await api({ a: 'scan', rt: RT, id: id, force: !!force, date: today(), hijri: hijri(new Date()) }) } catch (e) { return banner('err', esc(why(e))) }
   if (r.err) { if (/انتهت الجلسة/.test(r.err)) { banner('err', 'انتهت الجلسة، سجّل الدخول من جديد'); return logout() } return banner('err', esc(r.err)) }
   if (r.absent) return ask(r);
   if (r.dup) return banner('warn', `${esc(r.name)}<br>سُجِّل متأخراً مسبقاً اليوم الساعة ${esc(r.time)}`);
